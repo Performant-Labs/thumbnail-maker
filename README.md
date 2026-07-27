@@ -14,9 +14,10 @@ filling the rest of the frame.
 - **Editable design** — the look is defined by an **SVG template**, not hardcoded.
   Pick a template in the app, or duplicate and edit one to restyle everything.
 - **Title per image** comes from the file name: `feet-first.jpg` → **FEET FIRST**
-  (auto-shrinks and wraps to fit).
+  (auto-shrinks and wraps to fit) — or from a **CSV** (see below).
 - **Set once for the whole batch**: template, subtitle text, uppercase on/off.
 - **Live preview** of the first image so you can dial in the look before rendering.
+- **Remembers your settings** (folders, template, subtitle, CSV) between launches.
 
 Output files are written as `<name>_thumb.jpg` in the output folder.
 
@@ -42,7 +43,32 @@ spaces. So name the input photos after the video title:
 | `hip openers.jpg`             | HIP OPENERS          |
 
 The subtitle (e.g. `20 MINUTE PRACTICE`) is the same for every thumbnail in a
-run — set it in the app.
+run — unless you override it per photo with a CSV.
+
+## Per-photo titles from a CSV (optional)
+
+To set titles (and other fields) explicitly instead of from file names, pick a
+**Titles CSV** in the app. It needs a `filename` column plus any of `title`,
+`subtitle`, or custom fields matching `{{tokens}}` in your template:
+
+```csv
+filename,title,subtitle
+feet-first.jpg,Ankle Mobility,15 minute practice
+rebuild-your-foundation.jpg,Balance Basics,25 minute practice
+```
+
+Any photo not listed in the CSV falls back to its file-name title and the app's
+subtitle. Clear the CSV in the app to go back to file-name titles.
+
+## Settings are remembered
+
+Your input/output folders, selected template (including custom ones you browse
+to), subtitle, uppercase choice, and CSV path are saved between launches to a
+per-user config file:
+
+- Windows: `%APPDATA%\ThumbnailMaker\settings.json`
+- macOS: `~/Library/Application Support/ThumbnailMaker/settings.json`
+- Linux: `~/.config/ThumbnailMaker/settings.json`
 
 ## Templates (the design is editable)
 

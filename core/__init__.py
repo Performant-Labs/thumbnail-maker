@@ -29,6 +29,7 @@ from .render import (
     render_thumbnail,
     title_from_filename,
 )
+from .templates_lib import TemplateLibrary, builtin_template_paths
 from .types import ProgressCallback, Style
 
 __all__ = [
@@ -50,6 +51,9 @@ __all__ = [
     "list_images",
     "load_titles_csv",
     "placeholder_fields",
+    # template library / classification
+    "TemplateLibrary",
+    "builtin_template_paths",
     # config persistence (also available as core.config)
     "config",
 ]

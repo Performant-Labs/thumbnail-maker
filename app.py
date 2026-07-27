@@ -13,7 +13,6 @@ separate values. The design itself comes from an editable SVG template
 
 from __future__ import annotations
 
-import glob
 import os
 import threading
 import tkinter as tk
@@ -21,6 +20,7 @@ from tkinter import filedialog, ttk
 
 from PIL import Image, ImageTk
 
+import core
 from core import render
 from core import config as settings
 from version import __version__
@@ -171,11 +171,7 @@ class BasePanel(ttk.Frame):
             self._preview_imgtk = None
 
     def _placeholder_fields(self) -> dict[str, str]:
-        title = "Your Title Here"
-        subtitle = self.subtitle_var.get() or "Subtitle"
-        if self.upper_var.get():
-            title, subtitle = title.upper(), subtitle.upper()
-        return {"title": title, "subtitle": subtitle}
+        return render.placeholder_fields(self.subtitle_var.get(), self.upper_var.get())
 
     # ---- to be provided by subclasses ----
     def _preview_source(self):
@@ -449,12 +445,12 @@ class App:
         self._cfg = settings.load()
 
         # Template library shared by both tabs (selection stays per-tab).
-        self._templates: dict[str, str] = {}
-        for p in sorted(glob.glob(os.path.join(render.TEMPLATES_DIR, "*.svg"))):
-            self._register(p)
+        # Registration + built-in/custom classification is core domain logic.
+        self._lib = core.TemplateLibrary()
+        self._lib.load_builtins()
         for p in self._cfg.get("custom_templates", []):
             if os.path.exists(p):
-                self._register(p)
+                self._lib.register(p)
 
         outer = ttk.Frame(root, padding=8)
         outer.pack(fill="both", expand=True)
@@ -473,37 +469,18 @@ class App:
         ttk.Label(outer, text=f"v{__version__}", foreground="#999").pack(anchor="e", pady=(4, 0))
         root.protocol("WM_DELETE_WINDOW", self._on_close)
 
-    # ---- template library ----
-    def _register(self, path: str) -> str:
-        path = os.path.abspath(path)
-        for lbl, p in self._templates.items():
-            if os.path.normcase(p) == os.path.normcase(path):
-                return lbl
-        base = os.path.splitext(os.path.basename(path))[0]
-        label, i = base, 2
-        while label in self._templates:
-            label, i = f"{base} ({i})", i + 1
-        self._templates[label] = path
-        return label
-
+    # ---- template library (classification/registration delegated to core) ----
     def add_template(self, path: str) -> str:
-        label = self._register(path)
+        label = self._lib.add(path)
         for panel in (getattr(self, "single", None), getattr(self, "batch", None)):
             if panel is not None:
                 panel.refresh_templates()
         return label
 
     def template_labels(self) -> list[str]:
-        return list(self._templates)
+        return self._lib.labels()
 
     # ---- picker display helpers (both tabs share the same grouped dropdown) ----
-    def _builtin_paths(self) -> set[str]:
-        return {os.path.normcase(os.path.abspath(p))
-                for p in glob.glob(os.path.join(render.TEMPLATES_DIR, "*.svg"))}
-
-    def _is_builtin(self, path: str) -> bool:
-        return os.path.normcase(os.path.abspath(path)) in self._builtin_paths()
-
     def display_for_label(self, label: str) -> str:
         """Raw library label -> the indented string shown in the dropdown."""
         return self.ITEM_INDENT + label
@@ -523,38 +500,23 @@ class App:
         Headers are non-selectable markers (see BasePanel._on_template_selected);
         real entries are indented so the grouping reads clearly.
         """
-        builtin, custom = [], []
-        for lbl, p in self._templates.items():
-            (builtin if self._is_builtin(p) else custom).append(self.ITEM_INDENT + lbl)
+        builtin = [self.ITEM_INDENT + lbl for lbl in self._lib.builtin_labels()]
+        custom = [self.ITEM_INDENT + lbl for lbl in self._lib.custom_labels()]
         items = [self.BUILTIN_HEADER, *builtin]
         if custom:
             items += [self.CUSTOM_HEADER, *custom]
         return items
 
     def template_path(self, label: str) -> str:
-        label = self._label_from_display(label)
-        return self._templates.get(label, render.DEFAULT_TEMPLATE)
+        return self._lib.path_for_label(self._label_from_display(label))
 
     def label_for_path(self, path: str | None) -> str:
         """Return the indented dropdown display string for a template path."""
-        raw = self._raw_label_for_path(path)
+        raw = self._lib.label_for_path(path)
         return self.display_for_label(raw) if raw else raw
 
-    def _raw_label_for_path(self, path: str | None) -> str:
-        if path:
-            for lbl, p in self._templates.items():
-                if os.path.normcase(os.path.abspath(p)) == os.path.normcase(os.path.abspath(path)):
-                    return lbl
-        # default
-        for lbl, p in self._templates.items():
-            if os.path.normcase(os.path.abspath(p)) == os.path.normcase(os.path.abspath(render.DEFAULT_TEMPLATE)):
-                return lbl
-        return next(iter(self._templates), "")
-
     def _custom_template_paths(self) -> list[str]:
-        builtin = self._builtin_paths()
-        return [p for p in self._templates.values()
-                if os.path.normcase(os.path.abspath(p)) not in builtin]
+        return self._lib.custom_paths()
 
     # ---- persistence ----
     def save_settings(self):

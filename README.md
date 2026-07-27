@@ -9,17 +9,23 @@ filling the rest of the frame.
 
 ## What it does
 
-- **Simple GUI** — pick an **input folder** of photos and an **output folder**.
-- **Batch** — every image in the input folder becomes one thumbnail.
-- **Editable design** — the look is defined by an **SVG template**, not hardcoded.
-  Pick a template in the app, or duplicate and edit one to restyle everything.
-- **Title per image** comes from the file name: `feet-first.jpg` → **FEET FIRST**
-  (auto-shrinks and wraps to fit) — or from a **CSV** (see below).
-- **Set once for the whole batch**: template, subtitle text, uppercase on/off.
-- **Live preview** of the first image so you can dial in the look before rendering.
-- **Remembers your settings** (folders, template, subtitle, CSV) between launches.
+Two tools in one window, as tabs — each keeps its **own** independent settings:
 
-Output files are written as `<name>_thumb.jpg` in the output folder.
+- **Single** — make one thumbnail from one photo with a **title you type**.
+  Choose a photo, type a title/subtitle, and Create.
+- **Batch** — turn a whole **folder** of photos into thumbnails at once. Titles
+  come from each file name (`feet-first.jpg` → **FEET FIRST**) or from a **CSV**.
+
+Both share these ideas:
+
+- **Editable design** — the look is defined by an **SVG template**, not hardcoded.
+  Pick a template, or duplicate and edit one to restyle everything. Templates you
+  browse to are shared by both tabs.
+- **Auto-fit titles** that shrink and wrap to fit the panel.
+- **Live preview** before you render.
+- **Remembers your settings per tab** between launches.
+
+Output files are written as `<name>_thumb.jpg` in the chosen output folder.
 
 ## Install & run
 

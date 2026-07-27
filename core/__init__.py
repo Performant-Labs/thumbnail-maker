@@ -12,6 +12,7 @@ re-exported here (see ``__all__``) plus ``core.config``. See
 
 from __future__ import annotations
 
+from . import config
 from .resources import (
     DEFAULT_SUBTITLE,
     DEFAULT_TEMPLATE,
@@ -49,4 +50,6 @@ __all__ = [
     "list_images",
     "load_titles_csv",
     "placeholder_fields",
+    # config persistence (also available as core.config)
+    "config",
 ]

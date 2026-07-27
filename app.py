@@ -22,7 +22,7 @@ from tkinter import filedialog, ttk
 from PIL import Image, ImageTk
 
 from core import render
-import settings
+from core import config as settings
 from version import __version__
 
 PREVIEW_W, PREVIEW_H = 480, 270

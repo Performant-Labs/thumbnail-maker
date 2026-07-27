@@ -21,7 +21,7 @@ from tkinter import filedialog, ttk
 
 from PIL import Image, ImageTk
 
-import render
+from core import render
 import settings
 from version import __version__
 

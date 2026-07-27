@@ -46,7 +46,7 @@ if sys.platform == "win32":
 
 a = Analysis(
     ["app.py"],
-    pathex=[],
+    pathex=["."],   # repo root: finds app.py, cli.py, version.py and the core/ package
     binaries=[],
     datas=datas,
     hiddenimports=[],

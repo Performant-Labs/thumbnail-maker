@@ -61,6 +61,11 @@ build the Windows `.exe` on a Windows machine and the macOS `.app` on a Mac. The
 same [`ThumbnailMaker.spec`](ThumbnailMaker.spec) is used on both; it bundles the
 font and embeds the version number.
 
+The resulting `.exe` / `.app` is **fully self-contained**: it bundles the Python
+interpreter, Pillow, tkinter and the font. End users do **not** install Python or
+run `pip` — they just double-click. (Each build is OS- and CPU-architecture
+specific; see "Automated builds" below.)
+
 **Windows** (produces `dist\ThumbnailMaker.exe`):
 
 ```powershell
@@ -77,6 +82,25 @@ The version comes from [`version.py`](version.py) (single source of truth). It i
 shown in the window title and footer of the GUI, and embedded in the build — the
 Windows `.exe` file-properties version resource and the macOS `Info.plist`
 (`CFBundleShortVersionString`). Bump `__version__` there and rebuild.
+
+### Automated builds (GitHub Actions)
+
+[`.github/workflows/build.yml`](.github/workflows/build.yml) builds both apps in
+the cloud so you don't need both machines. Push a version tag and it builds the
+Windows `.exe` and macOS `.app`, then attaches them to a GitHub Release:
+
+```bash
+# bump __version__ in version.py first, then:
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+You can also run it on demand from the repo's **Actions** tab (workflow_dispatch),
+which uploads the apps as downloadable artifacts without creating a release.
+
+> Note on macOS architecture: GitHub's `macos-latest` runners are Apple Silicon,
+> so the produced `.app` is arm64 (Apple Silicon) native. To also support Intel
+> Macs, add an `macos-13` (x86_64) entry to the workflow matrix.
 
 ### Distribution notes
 

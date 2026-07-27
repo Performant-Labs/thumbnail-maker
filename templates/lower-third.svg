@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <defs>
+    <!-- Vertical shade: transparent at top, dark at the bottom, so the photo
+         shows through up top and the title stays readable below. -->
+    <linearGradient id="shade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0"    stop-color="#000000" stop-opacity="0"/>
+      <stop offset="0.55" stop-color="#000000" stop-opacity="0.55"/>
+      <stop offset="1"    stop-color="#000000" stop-opacity="0.9"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Photo: full-bleed. Cover-cropped into this box. -->
+  <rect id="photo" x="0" y="0" width="1280" height="720"/>
+
+  <!-- Lower-third gradient veil over the bottom of the photo. -->
+  <rect x="0" y="288" width="1280" height="432" fill="url(#shade)"/>
+
+  <!-- Subtitle: small, letter-spaced kicker sitting above the title. -->
+  <text x="66" y="512"
+        font-family="Playfair Display" font-weight="500" font-size="32"
+        fill="#F2C94C" text-anchor="start" letter-spacing="6"
+  >{{subtitle}}</text>
+
+  <!-- Title: shrinks and wraps downward to fit. font-size is the maximum. -->
+  <text x="64" y="596"
+        font-family="Playfair Display" font-weight="700" font-size="92"
+        fill="#FFFFFF" text-anchor="start"
+        data-fit="true" data-max-width="1152" data-max-lines="2" data-line-height="1.05"
+  >{{title}}</text>
+</svg>

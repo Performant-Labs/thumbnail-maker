@@ -20,7 +20,9 @@ Both share these ideas:
 
 - **Editable design** — the look is defined by an **SVG template**, not hardcoded.
   Pick a template, or duplicate and edit one to restyle everything. Templates you
-  browse to are shared by both tabs.
+  browse to are shared by both tabs. The template dropdown groups entries under
+  **Built-in** (the templates shipped in `templates/`) and **Custom** (ones you
+  browse to), so it's always clear which is which. Both tabs use the same picker.
 - **Auto-fit titles** that shrink and wrap to fit the panel.
 - **Live preview** before you render.
 - **Remembers your settings per tab** between launches.
@@ -80,8 +82,20 @@ per-user config file:
 
 The visual design lives in an **SVG template** under [`templates/`](templates/),
 rendered with [resvg](https://github.com/RazrFalcon/resvg) (a self-contained
-renderer bundled into the app — no system libraries required). To create a new
-look, copy [`templates/editorial.svg`](templates/editorial.svg), edit it in any
+renderer bundled into the app — no system libraries required). Five built-in
+templates ship with the app, each a distinct layout:
+
+| Template | Look |
+| --- | --- |
+| `editorial` | Left color panel with a large serif title; photo fills the right. |
+| `right-panel` | The editorial layout mirrored — photo left, color panel right. |
+| `bottom-bar` | Full-bleed photo with a solid caption bar across the bottom. |
+| `lower-third` | Full-bleed photo with a lower-third gradient veil under the title. |
+| `top-banner` | Color banner across the top holding the title; photo fills below. |
+
+In the app they appear under the **Built-in** group in the template dropdown;
+anything you browse to shows under **Custom**. To create a new look, copy
+[`templates/editorial.svg`](templates/editorial.svg), edit it in any
 SVG tool (Inkscape, Illustrator, Figma) or a text editor, drop it in `templates/`,
 and pick it in the app. Each template follows a small contract:
 

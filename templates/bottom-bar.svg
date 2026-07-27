@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <!-- Photo: full-bleed behind everything. Cover-cropped into this box. -->
+  <rect id="photo" x="0" y="0" width="1280" height="720"/>
+
+  <!-- Caption bar across the bottom. Change fill/height to restyle. -->
+  <rect x="0" y="548" width="1280" height="172" fill="#14181F"/>
+  <!-- Thin accent line along the top edge of the bar. -->
+  <rect x="0" y="548" width="1280" height="6" fill="#E8B84B"/>
+
+  <!-- Subtitle: small kicker, letter-spaced, sits above the title. -->
+  <text x="62" y="596"
+        font-family="Playfair Display" font-weight="600" font-size="28"
+        fill="#E8B84B" text-anchor="start" letter-spacing="6"
+  >{{subtitle}}</text>
+
+  <!-- Title: shrinks and wraps to fit the bar. font-size is the maximum. -->
+  <text x="60" y="684"
+        font-family="Playfair Display" font-weight="700" font-size="78"
+        fill="#FFFFFF" text-anchor="start"
+        data-fit="true" data-max-width="1160" data-max-lines="1" data-line-height="1.05"
+  >{{title}}</text>
+</svg>

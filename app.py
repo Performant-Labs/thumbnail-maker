@@ -54,16 +54,34 @@ class BasePanel(ttk.Frame):
 
     # ---- shared row builders (return next grid row) ----
     def _template_row(self, r):
+        """The template picker — used verbatim by BOTH the Single and Batch tabs.
+
+        The dropdown groups templates under non-selectable "Built-in" / "Custom"
+        headers so it's obvious which entries ship with the app and which the
+        user browsed to. Picking a header row is ignored (reverts to the last
+        real choice).
+        """
         ttk.Label(self, text="Template (.svg)").grid(row=r, column=0, sticky="w", pady=2)
         row = ttk.Frame(self); row.grid(row=r, column=1, sticky="ew", pady=2)
         row.columnconfigure(0, weight=1)
+        self._template_prev = self.template_var.get()
         self.template_combo = ttk.Combobox(row, textvariable=self.template_var,
-                                           values=self.app.template_labels(), state="readonly")
+                                           values=self.app.template_menu_items(), state="readonly")
         self.template_combo.grid(row=0, column=0, sticky="ew")
-        self.template_combo.bind("<<ComboboxSelected>>",
-                                 lambda e: (self.app.save_settings(), self._schedule_preview()))
+        self.template_combo.bind("<<ComboboxSelected>>", self._on_template_selected)
         ttk.Button(row, text="Browse…", command=self._pick_template).grid(row=0, column=1, padx=(6, 0))
         return r + 1
+
+    def _on_template_selected(self, *_):
+        # Guard the non-selectable group headers.
+        val = self.template_var.get()
+        if self.app.is_header(val):
+            fallback = self._template_prev or self.app.label_for_path(None)
+            self.template_var.set(fallback)
+            return
+        self._template_prev = val
+        self.app.save_settings()
+        self._schedule_preview()
 
     def _subtitle_row(self, r):
         ttk.Label(self, text="Subtitle").grid(row=r, column=0, sticky="w", pady=2)
@@ -105,7 +123,7 @@ class BasePanel(ttk.Frame):
     # ---- template handling ----
     def refresh_templates(self):
         if self.template_combo is not None:
-            self.template_combo.configure(values=self.app.template_labels())
+            self.template_combo.configure(values=self.app.template_menu_items())
 
     def _pick_template(self):
         p = filedialog.askopenfilename(title="Choose an SVG template",
@@ -113,7 +131,9 @@ class BasePanel(ttk.Frame):
                                        initialdir=os.path.dirname(self._template_path()) or None)
         if p:
             label = self.app.add_template(p)   # refreshes every tab's dropdown
-            self.template_var.set(label)
+            display = self.app.display_for_label(label)
+            self.template_var.set(display)
+            self._template_prev = display
             self.app.save_settings()
             self._schedule_preview()
 
@@ -416,6 +436,12 @@ class BatchPanel(BasePanel):
 # ---------------------------------------------------------------------------
 
 class App:
+    # Non-selectable group headers + the indent applied to real entries, so the
+    # picker visibly separates shipped templates from ones the user browsed to.
+    BUILTIN_HEADER = "──  Built-in  ──"
+    CUSTOM_HEADER = "──  Custom  ──"
+    ITEM_INDENT = "    "
+
     def __init__(self, root: tk.Tk):
         self.root = root
         root.title(f"Thumbnail Maker {__version__}")
@@ -470,10 +496,51 @@ class App:
     def template_labels(self) -> list[str]:
         return list(self._templates)
 
+    # ---- picker display helpers (both tabs share the same grouped dropdown) ----
+    def _builtin_paths(self) -> set[str]:
+        return {os.path.normcase(os.path.abspath(p))
+                for p in glob.glob(os.path.join(render.TEMPLATES_DIR, "*.svg"))}
+
+    def _is_builtin(self, path: str) -> bool:
+        return os.path.normcase(os.path.abspath(path)) in self._builtin_paths()
+
+    def display_for_label(self, label: str) -> str:
+        """Raw library label -> the indented string shown in the dropdown."""
+        return self.ITEM_INDENT + label
+
+    def _label_from_display(self, value: str) -> str:
+        """Indented dropdown string -> raw library label."""
+        if value.startswith(self.ITEM_INDENT):
+            return value[len(self.ITEM_INDENT):]
+        return value
+
+    def is_header(self, value: str) -> bool:
+        return value in (self.BUILTIN_HEADER, self.CUSTOM_HEADER)
+
+    def template_menu_items(self) -> list[str]:
+        """Dropdown entries grouped under Built-in / Custom headers.
+
+        Headers are non-selectable markers (see BasePanel._on_template_selected);
+        real entries are indented so the grouping reads clearly.
+        """
+        builtin, custom = [], []
+        for lbl, p in self._templates.items():
+            (builtin if self._is_builtin(p) else custom).append(self.ITEM_INDENT + lbl)
+        items = [self.BUILTIN_HEADER, *builtin]
+        if custom:
+            items += [self.CUSTOM_HEADER, *custom]
+        return items
+
     def template_path(self, label: str) -> str:
+        label = self._label_from_display(label)
         return self._templates.get(label, render.DEFAULT_TEMPLATE)
 
     def label_for_path(self, path: str | None) -> str:
+        """Return the indented dropdown display string for a template path."""
+        raw = self._raw_label_for_path(path)
+        return self.display_for_label(raw) if raw else raw
+
+    def _raw_label_for_path(self, path: str | None) -> str:
         if path:
             for lbl, p in self._templates.items():
                 if os.path.normcase(os.path.abspath(p)) == os.path.normcase(os.path.abspath(path)):
@@ -485,8 +552,7 @@ class App:
         return next(iter(self._templates), "")
 
     def _custom_template_paths(self) -> list[str]:
-        builtin = {os.path.normcase(os.path.abspath(p))
-                   for p in glob.glob(os.path.join(render.TEMPLATES_DIR, "*.svg"))}
+        builtin = self._builtin_paths()
         return [p for p in self._templates.values()
                 if os.path.normcase(os.path.abspath(p)) not in builtin]
 

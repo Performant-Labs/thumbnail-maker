@@ -21,8 +21,6 @@ from tkinter import filedialog, ttk
 from PIL import Image, ImageTk
 
 import core
-from core import render
-from core import config as settings
 from version import __version__
 
 PREVIEW_W, PREVIEW_H = 480, 270
@@ -44,7 +42,7 @@ class BasePanel(ttk.Frame):
         self.app = app
         self.columnconfigure(1, weight=1)
 
-        self.subtitle_var = tk.StringVar(value=cfg.get("subtitle", render.DEFAULT_SUBTITLE))
+        self.subtitle_var = tk.StringVar(value=cfg.get("subtitle", core.DEFAULT_SUBTITLE))
         self.template_var = tk.StringVar(value=app.label_for_path(cfg.get("template_path")))
         self.upper_var = tk.BooleanVar(value=cfg.get("uppercase", True))
         self.status_var = tk.StringVar(value="")
@@ -140,8 +138,8 @@ class BasePanel(ttk.Frame):
     def _template_path(self) -> str:
         return self.app.template_path(self.template_var.get())
 
-    def _current_style(self) -> render.Style:
-        return render.Style(template_path=self._template_path(),
+    def _current_style(self) -> core.Style:
+        return core.Style(template_path=self._template_path(),
                             subtitle=self.subtitle_var.get(),
                             uppercase=self.upper_var.get())
 
@@ -159,10 +157,10 @@ class BasePanel(ttk.Frame):
             if src is None:
                 # No photo yet — show the template layout so you can see where
                 # the words and photo will go.
-                img = render.render_layout(self._current_style(), self._placeholder_fields())
+                img = core.render_layout(self._current_style(), self._placeholder_fields())
             else:
                 photo_path, arg = src
-                img = render.render_thumbnail(photo_path, arg, self._current_style())
+                img = core.render_thumbnail(photo_path, arg, self._current_style())
             preview = img.resize((PREVIEW_W, PREVIEW_H), Image.LANCZOS)
             self._preview_imgtk = ImageTk.PhotoImage(preview)
             self.preview_label.configure(image=self._preview_imgtk, text="")
@@ -171,7 +169,7 @@ class BasePanel(ttk.Frame):
             self._preview_imgtk = None
 
     def _placeholder_fields(self) -> dict[str, str]:
-        return render.placeholder_fields(self.subtitle_var.get(), self.upper_var.get())
+        return core.placeholder_fields(self.subtitle_var.get(), self.upper_var.get())
 
     # ---- to be provided by subclasses ----
     def _preview_source(self):
@@ -225,14 +223,14 @@ class SinglePanel(BasePanel):
         return r + 1
 
     def _pick_image(self):
-        exts = " ".join(f"*{e}" for e in sorted(render.IMAGE_EXTS))
+        exts = " ".join(f"*{e}" for e in sorted(core.IMAGE_EXTS))
         p = filedialog.askopenfilename(title="Choose a photo",
                                        filetypes=[("Images", exts), ("All files", "*.*")],
                                        initialdir=os.path.dirname(self.image_var.get()) or None)
         if p:
             self.image_var.set(p)
             if not self.title_var.get():
-                self.title_var.set(render.title_from_filename(p))
+                self.title_var.set(core.title_from_filename(p))
             if not self.out_var.get():
                 self.out_var.set(os.path.dirname(p))
             self.app.save_settings()
@@ -246,7 +244,7 @@ class SinglePanel(BasePanel):
 
     def _title_or_filename(self) -> str:
         img = self.image_var.get()
-        return self.title_var.get().strip() or (render.title_from_filename(img) if img else "")
+        return self.title_var.get().strip() or (core.title_from_filename(img) if img else "")
 
     def _preview_source(self):
         img = self.image_var.get()
@@ -266,7 +264,7 @@ class SinglePanel(BasePanel):
             self.status_var.set("Please choose an output folder."); return
         try:
             os.makedirs(out_dir, exist_ok=True)
-            result = render.render_thumbnail(img, self._title_or_filename(), self._current_style())
+            result = core.render_thumbnail(img, self._title_or_filename(), self._current_style())
             stem = os.path.splitext(os.path.basename(img))[0]
             out_path = os.path.join(out_dir, f"{stem}_thumb.jpg")
             result.save(out_path, "JPEG", quality=90)
@@ -355,7 +353,7 @@ class BatchPanel(BasePanel):
         path = self.csv_var.get()
         if path and os.path.exists(path):
             try:
-                return render.load_titles_csv(path)
+                return core.load_titles_csv(path)
             except Exception as e:
                 self.status_var.set(f"Could not read CSV: {e}")
         return {}
@@ -364,12 +362,12 @@ class BatchPanel(BasePanel):
         folder = self.in_var.get()
         if not folder or not os.path.isdir(folder):
             return None
-        images = render.list_images(folder)
+        images = core.list_images(folder)
         if not images:
             return None
         path = images[0]
         overrides = self._overrides().get(os.path.basename(path))
-        return path, (overrides if overrides else render.title_from_filename(path))
+        return path, (overrides if overrides else core.title_from_filename(path))
 
     def _empty_preview_text(self):
         return "Choose an input folder with images"
@@ -382,7 +380,7 @@ class BatchPanel(BasePanel):
             self.status_var.set("Please choose a valid input folder."); return
         if not out_folder:
             self.status_var.set("Please choose an output folder."); return
-        images = render.list_images(in_folder)
+        images = core.list_images(in_folder)
         if not images:
             self.status_var.set("No images found in the input folder."); return
 
@@ -399,7 +397,7 @@ class BatchPanel(BasePanel):
             self.after(0, lambda: self._on_progress(done, total, name))
 
         def work():
-            written = render.batch_render(in_folder, out_folder, style,
+            written = core.batch_render(in_folder, out_folder, style,
                                           csv_overrides=overrides, progress=progress)
             self.after(0, lambda: self._on_done(len(written), out_folder))
 
@@ -442,7 +440,7 @@ class App:
         self.root = root
         root.title(f"Thumbnail Maker {__version__}")
         root.minsize(560, 640)
-        self._cfg = settings.load()
+        self._cfg = core.config.load()
 
         # Template library shared by both tabs (selection stays per-tab).
         # Registration + built-in/custom classification is core domain logic.
@@ -530,7 +528,7 @@ class App:
             "custom_templates": self._custom_template_paths(),
             "active_tab": active,
         })
-        settings.save(self._cfg)
+        core.config.save(self._cfg)
 
     def _on_close(self):
         self.save_settings()

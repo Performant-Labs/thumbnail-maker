@@ -135,19 +135,27 @@ class BasePanel(ttk.Frame):
         self._preview_job = None
         self.app.save_settings()  # debounced text edits land here
         src = self._preview_source()
-        if src is None:
-            self.preview_label.configure(image="", text=self._empty_preview_text())
-            self._preview_imgtk = None
-            return
-        photo_path, arg = src
         try:
-            img = render.render_thumbnail(photo_path, arg, self._current_style())
+            if src is None:
+                # No photo yet — show the template layout so you can see where
+                # the words and photo will go.
+                img = render.render_layout(self._current_style(), self._placeholder_fields())
+            else:
+                photo_path, arg = src
+                img = render.render_thumbnail(photo_path, arg, self._current_style())
             preview = img.resize((PREVIEW_W, PREVIEW_H), Image.LANCZOS)
             self._preview_imgtk = ImageTk.PhotoImage(preview)
             self.preview_label.configure(image=self._preview_imgtk, text="")
         except Exception as e:
             self.preview_label.configure(image="", text=f"Preview error:\n{e}")
             self._preview_imgtk = None
+
+    def _placeholder_fields(self) -> dict[str, str]:
+        title = "Your Title Here"
+        subtitle = self.subtitle_var.get() or "Subtitle"
+        if self.upper_var.get():
+            title, subtitle = title.upper(), subtitle.upper()
+        return {"title": title, "subtitle": subtitle}
 
     # ---- to be provided by subclasses ----
     def _preview_source(self):
@@ -190,8 +198,7 @@ class SinglePanel(BasePanel):
         r = self._preview_row(r)
         r = self._status_row(r)
 
-        if self.image_var.get():
-            self._schedule_preview()
+        self._schedule_preview()   # shows template layout even before a photo
 
     def _image_row(self, r):
         ttk.Label(self, text="Photo").grid(row=r, column=0, sticky="w", pady=2)
@@ -289,8 +296,7 @@ class BatchPanel(BasePanel):
         r = self._preview_row(r)
         r = self._status_row(r)
 
-        if self.in_var.get():
-            self._schedule_preview()
+        self._schedule_preview()   # shows template layout even before a folder
 
     def _csv_row(self, r):
         ttk.Label(self, text="Titles CSV (optional)").grid(row=r, column=0, sticky="w", pady=2)

@@ -111,6 +111,14 @@ def render_thumbnail(photo_path: str, title_or_fields, style: Style):
     return svgtemplate.render_template(svg, photo_path, fields, style.font_files)
 
 
+def render_layout(style: Style, fields: dict[str, str] | None = None):
+    """Render the template's layout (placeholder words + a 'PHOTO' box)."""
+    fields = fields or {"title": "Your Title Here", "subtitle": style.subtitle}
+    with open(style.template_path, encoding="utf-8") as f:
+        svg = f.read()
+    return svgtemplate.render_layout(svg, fields, style.font_files)
+
+
 def batch_render(input_folder: str, output_folder: str, style: Style,
                  csv_overrides: dict[str, dict[str, str]] | None = None,
                  quality: int = 90, progress=None) -> list[str]:

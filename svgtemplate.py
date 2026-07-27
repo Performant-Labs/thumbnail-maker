@@ -72,39 +72,73 @@ def _build_parent_map(root):
     return {child: parent for parent in root.iter() for child in parent}
 
 
-def _inject_photo(root, photo_path: str):
-    """Replace the element with id="photo" with an <image> of the photo."""
-    target = None
+def _find_photo(root):
     for el in root.iter():
         if el.get("id") == "photo":
-            target = el
-            break
-    if target is None:
-        return  # template has no photo slot; that's allowed
+            return el
+    return None
 
-    x = target.get("x", "0")
-    y = target.get("y", "0")
-    w = target.get("width", "0")
-    h = target.get("height", "0")
-    transform = target.get("transform")
 
-    img = ET.Element(f"{{{SVG_NS}}}image")
-    img.set("x", x); img.set("y", y)
-    img.set("width", w); img.set("height", h)
-    img.set("preserveAspectRatio", "xMidYMid slice")
-    img.set("href", _data_uri(photo_path))
-    if transform:
-        img.set("transform", transform)
-    img.set("id", "photo")
-
+def _replace(root, target, new_el):
     parents = _build_parent_map(root)
     parent = parents.get(target)
     if parent is None:
-        return
-    # replace in place to preserve stacking order
+        return False
     idx = list(parent).index(target)
     parent.remove(target)
-    parent.insert(idx, img)
+    parent.insert(idx, new_el)
+    return True
+
+
+def _inject_photo(root, photo_path: str):
+    """Replace the element with id="photo" with an <image> of the photo."""
+    target = _find_photo(root)
+    if target is None:
+        return  # template has no photo slot; that's allowed
+
+    img = ET.Element(f"{{{SVG_NS}}}image")
+    img.set("x", target.get("x", "0")); img.set("y", target.get("y", "0"))
+    img.set("width", target.get("width", "0")); img.set("height", target.get("height", "0"))
+    img.set("preserveAspectRatio", "xMidYMid slice")
+    img.set("href", _data_uri(photo_path))
+    transform = target.get("transform")
+    if transform:
+        img.set("transform", transform)
+    img.set("id", "photo")
+    _replace(root, target, img)
+
+
+def _inject_photo_placeholder(root):
+    """Replace the photo slot with a labeled 'PHOTO' box (for layout preview)."""
+    target = _find_photo(root)
+    if target is None:
+        return
+
+    def f(v, d=0.0):
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return d
+    x, y = f(target.get("x")), f(target.get("y"))
+    w, h = f(target.get("width")), f(target.get("height"))
+
+    g = ET.Element(f"{{{SVG_NS}}}g")
+    if target.get("transform"):
+        g.set("transform", target.get("transform"))
+    rect = ET.SubElement(g, f"{{{SVG_NS}}}rect")
+    rect.set("x", str(x)); rect.set("y", str(y))
+    rect.set("width", str(w)); rect.set("height", str(h))
+    rect.set("fill", "#DDDDDD")
+    rect.set("stroke", "#9AA0A6"); rect.set("stroke-width", "3")
+    rect.set("stroke-dasharray", "12 9")
+    label = ET.SubElement(g, f"{{{SVG_NS}}}text")
+    fs = max(20.0, min(w, h) * 0.12)
+    label.set("x", str(x + w / 2)); label.set("y", str(y + h / 2 + fs * 0.35))
+    label.set("text-anchor", "middle")
+    label.set("font-family", "Playfair Display"); label.set("font-size", str(fs))
+    label.set("fill", "#6B7075")
+    label.text = "PHOTO"
+    _replace(root, target, g)
 
 
 # ---------------------------------------------------------------------------
@@ -233,6 +267,31 @@ def render_template(svg_text: str, photo_path: str, fields: dict[str, str],
         font_files=list(font_files),
         skip_system_fonts=True,
     )
+    return _to_rgb(png_bytes)
+
+
+def render_layout(svg_text: str, fields: dict[str, str],
+                  font_files: list[str]) -> Image.Image:
+    """Render a template's *layout* — placeholder title/subtitle plus a labeled
+    'PHOTO' box — so you can see where everything lands before picking a photo.
+    """
+    filled = substitute_tokens(svg_text, fields)
+    root = ET.fromstring(filled)
+
+    _inject_photo_placeholder(root)
+    if font_files:
+        _fit_text_elements(root, font_files[0])
+
+    width, height = _canvas_size(root)
+    png_bytes = resvg_py.svg_to_bytes(
+        svg_string=ET.tostring(root, encoding="unicode"),
+        width=width, height=height,
+        font_files=list(font_files), skip_system_fonts=True,
+    )
+    return _to_rgb(png_bytes)
+
+
+def _to_rgb(png_bytes) -> Image.Image:
     img = Image.open(io.BytesIO(bytes(png_bytes))).convert("RGBA")
     # flatten onto white so JPEG output has no black transparency
     bg = Image.new("RGB", img.size, "#FFFFFF")

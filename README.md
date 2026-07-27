@@ -109,17 +109,49 @@ Everything else (colors, shapes, gradients, logos, extra text) renders exactly a
 drawn, so the panel color, fonts, and layout are all yours to change — no code.
 
 > Extra `{{fields}}` beyond title/subtitle can be filled from a CSV; see
-> `render.load_titles_csv` and `batch_render(..., csv_overrides=...)`.
+> `core.load_titles_csv` and `core.batch_render(..., csv_overrides=...)`.
+
+## Architecture (core vs frontend)
+
+The code is split into a **UI-free core library** and thin **frontends**:
+
+- **`core/`** — the backend. Rendering (`render`, `svgtemplate`), boundary types
+  (`Style`, the progress callback), the template library (built-in/custom
+  classification), image discovery / title derivation, and settings persistence
+  (`core.config`). It imports **no** tkinter and returns PIL `Image` objects or
+  writes files — never GUI objects, so it runs headlessly and is unit-tested in
+  CI (`.github/workflows/tests.yml`).
+- **`app.py`** — the tkinter GUI, and **`cli.py`** — the command line. Each is a
+  frontend that depends **only** on `core`'s public API (see `core.__all__`).
+
+The full boundary and public API are documented in
+[`docs/architecture.md`](docs/architecture.md).
 
 ## Scripting (no GUI)
 
-`render.py` is a standalone engine you can call directly:
+`core` is a standalone engine you can call directly:
 
 ```python
-import render
-style = render.Style(subtitle="20 MINUTE PRACTICE")   # uses templates/editorial.svg
-render.batch_render("photos/", "thumbnails/", style)
+import core
+style = core.Style(subtitle="20 MINUTE PRACTICE")   # uses templates/editorial.svg
+core.batch_render("photos/", "thumbnails/", style)
 ```
+
+Or drive it straight from the terminal with the bundled CLI:
+
+```bash
+python cli.py single photo.jpg --template editorial --title "FEET FIRST"
+python cli.py batch photos/ thumbnails/ --csv titles.csv
+python cli.py templates          # list the built-in template names
+```
+
+### Writing an alternate frontend
+
+To add your own frontend (web, another GUI, a script), `import core`, build a
+`core.Style`, and call `render_thumbnail` / `render_layout` / `batch_render`.
+That is the entire dependency — a frontend never imports `core.svgtemplate`
+directly or reaches into internals; everything it needs is in `core.__all__`
+plus `core.config`. `cli.py` is a complete ~140-line worked example.
 
 ## Packaging as a desktop app
 

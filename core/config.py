@@ -1,4 +1,8 @@
-"""Persist GUI settings between launches.
+"""UI-free settings persistence — a core storage primitive.
+
+This is the storage *primitive* only: load/save an untyped dict plus config-dir
+resolution. The *schema* of that dict (per-tab blocks, custom-template list,
+etc.) is owned by the frontend. No UI toolkit is imported here.
 
 Stored as JSON in the per-user config directory:
   Windows: %APPDATA%\ThumbnailMaker\settings.json
@@ -11,6 +15,8 @@ from __future__ import annotations
 import json
 import os
 import sys
+
+__all__ = ["APP_DIR_NAME", "config_dir", "settings_path", "load", "save"]
 
 APP_DIR_NAME = "ThumbnailMaker"
 

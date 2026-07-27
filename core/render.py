@@ -9,42 +9,32 @@ from __future__ import annotations
 
 import csv
 import os
-import sys
-from dataclasses import dataclass, field
 
-import svgtemplate
+from . import svgtemplate
+from .resources import (
+    DEFAULT_SUBTITLE,
+    DEFAULT_TEMPLATE,
+    FONT_PATH,
+    IMAGE_EXTS,
+    TEMPLATES_DIR,
+)
+from .types import Style
 
-# ---------------------------------------------------------------------------
-# Resources
-# ---------------------------------------------------------------------------
-
-def _resource_dir() -> str:
-    """Directory holding bundled data (fonts, templates).
-
-    Under PyInstaller these are unpacked to sys._MEIPASS; otherwise it's the
-    directory of this source file.
-    """
-    if getattr(sys, "frozen", False):
-        return getattr(sys, "_MEIPASS", os.path.dirname(sys.executable))
-    return os.path.dirname(os.path.abspath(__file__))
-
-
-FONT_PATH = os.path.join(_resource_dir(), "fonts", "PlayfairDisplay-VF.ttf")
-TEMPLATES_DIR = os.path.join(_resource_dir(), "templates")
-DEFAULT_TEMPLATE = os.path.join(TEMPLATES_DIR, "editorial.svg")
-
-DEFAULT_SUBTITLE = "20 MINUTE PRACTICE"
-IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff"}
-
-
-@dataclass
-class Style:
-    """Batch-wide settings. The look itself comes from the template SVG."""
-
-    template_path: str = DEFAULT_TEMPLATE
-    subtitle: str = DEFAULT_SUBTITLE
-    uppercase: bool = True
-    font_files: list[str] = field(default_factory=lambda: [FONT_PATH])
+__all__ = [
+    "Style",
+    "DEFAULT_TEMPLATE",
+    "TEMPLATES_DIR",
+    "FONT_PATH",
+    "DEFAULT_SUBTITLE",
+    "IMAGE_EXTS",
+    "title_from_filename",
+    "load_titles_csv",
+    "list_images",
+    "placeholder_fields",
+    "render_thumbnail",
+    "render_layout",
+    "batch_render",
+]
 
 
 # ---------------------------------------------------------------------------
@@ -57,6 +47,20 @@ def title_from_filename(path: str) -> str:
     for sep in ("_", "-", "."):
         stem = stem.replace(sep, " ")
     return " ".join(stem.split()).strip()
+
+
+def placeholder_fields(subtitle: str, uppercase: bool) -> dict[str, str]:
+    """Field dict for a layout preview before a real title exists.
+
+    Produces the placeholder title ("Your Title Here") plus the given subtitle,
+    applying the same uppercase rule as a real render. This is domain logic, not
+    presentation, so it lives in core and is shared by every frontend.
+    """
+    title = "Your Title Here"
+    subtitle = subtitle or "Subtitle"
+    if uppercase:
+        title, subtitle = title.upper(), subtitle.upper()
+    return {"title": title, "subtitle": subtitle}
 
 
 def load_titles_csv(csv_path: str) -> dict[str, dict[str, str]]:

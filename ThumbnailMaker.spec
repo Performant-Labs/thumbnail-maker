@@ -17,7 +17,10 @@ while len(_parts) < 4:
     _parts.append(0)
 VERSION_TUPLE = tuple(_parts[:4])
 
-# Bundle the fonts/ and templates/ folders (the app needs both at runtime).
+# Bundle the fonts/ and templates/ folders at the bundle root (next to the
+# frozen executable's _MEIPASS). core.resources resolves them from _MEIPASS when
+# frozen, so the paths below must stay "fonts" and "templates". The core/ package
+# is pure Python and is collected automatically from pathex below.
 datas = [("fonts", "fonts"), ("templates", "templates")]
 
 # --- Windows: build a version-info resource so the .exe has a real version ---
@@ -46,7 +49,7 @@ if sys.platform == "win32":
 
 a = Analysis(
     ["app.py"],
-    pathex=[],
+    pathex=["."],   # repo root: finds app.py, cli.py, version.py and the core/ package
     binaries=[],
     datas=datas,
     hiddenimports=[],

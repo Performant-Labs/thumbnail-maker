@@ -13,7 +13,6 @@ separate values. The design itself comes from an editable SVG template
 
 from __future__ import annotations
 
-import glob
 import os
 import threading
 import tkinter as tk
@@ -21,8 +20,7 @@ from tkinter import filedialog, ttk
 
 from PIL import Image, ImageTk
 
-import render
-import settings
+import core
 from version import __version__
 
 PREVIEW_W, PREVIEW_H = 480, 270
@@ -44,7 +42,7 @@ class BasePanel(ttk.Frame):
         self.app = app
         self.columnconfigure(1, weight=1)
 
-        self.subtitle_var = tk.StringVar(value=cfg.get("subtitle", render.DEFAULT_SUBTITLE))
+        self.subtitle_var = tk.StringVar(value=cfg.get("subtitle", core.DEFAULT_SUBTITLE))
         self.template_var = tk.StringVar(value=app.label_for_path(cfg.get("template_path")))
         self.upper_var = tk.BooleanVar(value=cfg.get("uppercase", True))
         self.status_var = tk.StringVar(value="")
@@ -140,8 +138,8 @@ class BasePanel(ttk.Frame):
     def _template_path(self) -> str:
         return self.app.template_path(self.template_var.get())
 
-    def _current_style(self) -> render.Style:
-        return render.Style(template_path=self._template_path(),
+    def _current_style(self) -> core.Style:
+        return core.Style(template_path=self._template_path(),
                             subtitle=self.subtitle_var.get(),
                             uppercase=self.upper_var.get())
 
@@ -159,10 +157,10 @@ class BasePanel(ttk.Frame):
             if src is None:
                 # No photo yet — show the template layout so you can see where
                 # the words and photo will go.
-                img = render.render_layout(self._current_style(), self._placeholder_fields())
+                img = core.render_layout(self._current_style(), self._placeholder_fields())
             else:
                 photo_path, arg = src
-                img = render.render_thumbnail(photo_path, arg, self._current_style())
+                img = core.render_thumbnail(photo_path, arg, self._current_style())
             preview = img.resize((PREVIEW_W, PREVIEW_H), Image.LANCZOS)
             self._preview_imgtk = ImageTk.PhotoImage(preview)
             self.preview_label.configure(image=self._preview_imgtk, text="")
@@ -171,11 +169,7 @@ class BasePanel(ttk.Frame):
             self._preview_imgtk = None
 
     def _placeholder_fields(self) -> dict[str, str]:
-        title = "Your Title Here"
-        subtitle = self.subtitle_var.get() or "Subtitle"
-        if self.upper_var.get():
-            title, subtitle = title.upper(), subtitle.upper()
-        return {"title": title, "subtitle": subtitle}
+        return core.placeholder_fields(self.subtitle_var.get(), self.upper_var.get())
 
     # ---- to be provided by subclasses ----
     def _preview_source(self):
@@ -229,14 +223,14 @@ class SinglePanel(BasePanel):
         return r + 1
 
     def _pick_image(self):
-        exts = " ".join(f"*{e}" for e in sorted(render.IMAGE_EXTS))
+        exts = " ".join(f"*{e}" for e in sorted(core.IMAGE_EXTS))
         p = filedialog.askopenfilename(title="Choose a photo",
                                        filetypes=[("Images", exts), ("All files", "*.*")],
                                        initialdir=os.path.dirname(self.image_var.get()) or None)
         if p:
             self.image_var.set(p)
             if not self.title_var.get():
-                self.title_var.set(render.title_from_filename(p))
+                self.title_var.set(core.title_from_filename(p))
             if not self.out_var.get():
                 self.out_var.set(os.path.dirname(p))
             self.app.save_settings()
@@ -250,7 +244,7 @@ class SinglePanel(BasePanel):
 
     def _title_or_filename(self) -> str:
         img = self.image_var.get()
-        return self.title_var.get().strip() or (render.title_from_filename(img) if img else "")
+        return self.title_var.get().strip() or (core.title_from_filename(img) if img else "")
 
     def _preview_source(self):
         img = self.image_var.get()
@@ -270,7 +264,7 @@ class SinglePanel(BasePanel):
             self.status_var.set("Please choose an output folder."); return
         try:
             os.makedirs(out_dir, exist_ok=True)
-            result = render.render_thumbnail(img, self._title_or_filename(), self._current_style())
+            result = core.render_thumbnail(img, self._title_or_filename(), self._current_style())
             stem = os.path.splitext(os.path.basename(img))[0]
             out_path = os.path.join(out_dir, f"{stem}_thumb.jpg")
             result.save(out_path, "JPEG", quality=90)
@@ -359,7 +353,7 @@ class BatchPanel(BasePanel):
         path = self.csv_var.get()
         if path and os.path.exists(path):
             try:
-                return render.load_titles_csv(path)
+                return core.load_titles_csv(path)
             except Exception as e:
                 self.status_var.set(f"Could not read CSV: {e}")
         return {}
@@ -368,12 +362,12 @@ class BatchPanel(BasePanel):
         folder = self.in_var.get()
         if not folder or not os.path.isdir(folder):
             return None
-        images = render.list_images(folder)
+        images = core.list_images(folder)
         if not images:
             return None
         path = images[0]
         overrides = self._overrides().get(os.path.basename(path))
-        return path, (overrides if overrides else render.title_from_filename(path))
+        return path, (overrides if overrides else core.title_from_filename(path))
 
     def _empty_preview_text(self):
         return "Choose an input folder with images"
@@ -386,7 +380,7 @@ class BatchPanel(BasePanel):
             self.status_var.set("Please choose a valid input folder."); return
         if not out_folder:
             self.status_var.set("Please choose an output folder."); return
-        images = render.list_images(in_folder)
+        images = core.list_images(in_folder)
         if not images:
             self.status_var.set("No images found in the input folder."); return
 
@@ -403,7 +397,7 @@ class BatchPanel(BasePanel):
             self.after(0, lambda: self._on_progress(done, total, name))
 
         def work():
-            written = render.batch_render(in_folder, out_folder, style,
+            written = core.batch_render(in_folder, out_folder, style,
                                           csv_overrides=overrides, progress=progress)
             self.after(0, lambda: self._on_done(len(written), out_folder))
 
@@ -446,15 +440,15 @@ class App:
         self.root = root
         root.title(f"Thumbnail Maker {__version__}")
         root.minsize(560, 640)
-        self._cfg = settings.load()
+        self._cfg = core.config.load()
 
         # Template library shared by both tabs (selection stays per-tab).
-        self._templates: dict[str, str] = {}
-        for p in sorted(glob.glob(os.path.join(render.TEMPLATES_DIR, "*.svg"))):
-            self._register(p)
+        # Registration + built-in/custom classification is core domain logic.
+        self._lib = core.TemplateLibrary()
+        self._lib.load_builtins()
         for p in self._cfg.get("custom_templates", []):
             if os.path.exists(p):
-                self._register(p)
+                self._lib.register(p)
 
         outer = ttk.Frame(root, padding=8)
         outer.pack(fill="both", expand=True)
@@ -473,37 +467,18 @@ class App:
         ttk.Label(outer, text=f"v{__version__}", foreground="#999").pack(anchor="e", pady=(4, 0))
         root.protocol("WM_DELETE_WINDOW", self._on_close)
 
-    # ---- template library ----
-    def _register(self, path: str) -> str:
-        path = os.path.abspath(path)
-        for lbl, p in self._templates.items():
-            if os.path.normcase(p) == os.path.normcase(path):
-                return lbl
-        base = os.path.splitext(os.path.basename(path))[0]
-        label, i = base, 2
-        while label in self._templates:
-            label, i = f"{base} ({i})", i + 1
-        self._templates[label] = path
-        return label
-
+    # ---- template library (classification/registration delegated to core) ----
     def add_template(self, path: str) -> str:
-        label = self._register(path)
+        label = self._lib.add(path)
         for panel in (getattr(self, "single", None), getattr(self, "batch", None)):
             if panel is not None:
                 panel.refresh_templates()
         return label
 
     def template_labels(self) -> list[str]:
-        return list(self._templates)
+        return self._lib.labels()
 
     # ---- picker display helpers (both tabs share the same grouped dropdown) ----
-    def _builtin_paths(self) -> set[str]:
-        return {os.path.normcase(os.path.abspath(p))
-                for p in glob.glob(os.path.join(render.TEMPLATES_DIR, "*.svg"))}
-
-    def _is_builtin(self, path: str) -> bool:
-        return os.path.normcase(os.path.abspath(path)) in self._builtin_paths()
-
     def display_for_label(self, label: str) -> str:
         """Raw library label -> the indented string shown in the dropdown."""
         return self.ITEM_INDENT + label
@@ -523,38 +498,23 @@ class App:
         Headers are non-selectable markers (see BasePanel._on_template_selected);
         real entries are indented so the grouping reads clearly.
         """
-        builtin, custom = [], []
-        for lbl, p in self._templates.items():
-            (builtin if self._is_builtin(p) else custom).append(self.ITEM_INDENT + lbl)
+        builtin = [self.ITEM_INDENT + lbl for lbl in self._lib.builtin_labels()]
+        custom = [self.ITEM_INDENT + lbl for lbl in self._lib.custom_labels()]
         items = [self.BUILTIN_HEADER, *builtin]
         if custom:
             items += [self.CUSTOM_HEADER, *custom]
         return items
 
     def template_path(self, label: str) -> str:
-        label = self._label_from_display(label)
-        return self._templates.get(label, render.DEFAULT_TEMPLATE)
+        return self._lib.path_for_label(self._label_from_display(label))
 
     def label_for_path(self, path: str | None) -> str:
         """Return the indented dropdown display string for a template path."""
-        raw = self._raw_label_for_path(path)
+        raw = self._lib.label_for_path(path)
         return self.display_for_label(raw) if raw else raw
 
-    def _raw_label_for_path(self, path: str | None) -> str:
-        if path:
-            for lbl, p in self._templates.items():
-                if os.path.normcase(os.path.abspath(p)) == os.path.normcase(os.path.abspath(path)):
-                    return lbl
-        # default
-        for lbl, p in self._templates.items():
-            if os.path.normcase(os.path.abspath(p)) == os.path.normcase(os.path.abspath(render.DEFAULT_TEMPLATE)):
-                return lbl
-        return next(iter(self._templates), "")
-
     def _custom_template_paths(self) -> list[str]:
-        builtin = self._builtin_paths()
-        return [p for p in self._templates.values()
-                if os.path.normcase(os.path.abspath(p)) not in builtin]
+        return self._lib.custom_paths()
 
     # ---- persistence ----
     def save_settings(self):
@@ -568,7 +528,7 @@ class App:
             "custom_templates": self._custom_template_paths(),
             "active_tab": active,
         })
-        settings.save(self._cfg)
+        core.config.save(self._cfg)
 
     def _on_close(self):
         self.save_settings()

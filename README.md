@@ -11,10 +11,11 @@ filling the rest of the frame.
 
 - **Simple GUI** — pick an **input folder** of photos and an **output folder**.
 - **Batch** — every image in the input folder becomes one thumbnail.
+- **Editable design** — the look is defined by an **SVG template**, not hardcoded.
+  Pick a template in the app, or duplicate and edit one to restyle everything.
 - **Title per image** comes from the file name: `feet-first.jpg` → **FEET FIRST**
-  (up to two auto-balanced lines).
-- **Set once for the whole batch**: subtitle text, panel color, panel side
-  (left/right), and uppercase on/off.
+  (auto-shrinks and wraps to fit).
+- **Set once for the whole batch**: template, subtitle text, uppercase on/off.
 - **Live preview** of the first image so you can dial in the look before rendering.
 
 Output files are written as `<name>_thumb.jpg` in the output folder.
@@ -43,13 +44,34 @@ spaces. So name the input photos after the video title:
 The subtitle (e.g. `20 MINUTE PRACTICE`) is the same for every thumbnail in a
 run — set it in the app.
 
+## Templates (the design is editable)
+
+The visual design lives in an **SVG template** under [`templates/`](templates/),
+rendered with [resvg](https://github.com/RazrFalcon/resvg) (a self-contained
+renderer bundled into the app — no system libraries required). To create a new
+look, copy [`templates/editorial.svg`](templates/editorial.svg), edit it in any
+SVG tool (Inkscape, Illustrator, Figma) or a text editor, drop it in `templates/`,
+and pick it in the app. Each template follows a small contract:
+
+| What | How |
+| --- | --- |
+| **Title / subtitle text** | Put the tokens `{{title}}` and `{{subtitle}}` in `<text>` elements. |
+| **Photo region** | Give one element `id="photo"` (a `<rect>` is easiest). Each photo is cover-cropped into that box. |
+| **Auto-fit a title** | On its `<text>`, add `data-fit="true"` with `data-max-width` (px), `data-max-lines`, and optional `data-line-height`. Its `font-size` is treated as the maximum. |
+
+Everything else (colors, shapes, gradients, logos, extra text) renders exactly as
+drawn, so the panel color, fonts, and layout are all yours to change — no code.
+
+> Extra `{{fields}}` beyond title/subtitle can be filled from a CSV; see
+> `render.load_titles_csv` and `batch_render(..., csv_overrides=...)`.
+
 ## Scripting (no GUI)
 
 `render.py` is a standalone engine you can call directly:
 
 ```python
 import render
-style = render.Style(panel_color="#72204E", subtitle="20 MINUTE PRACTICE")
+style = render.Style(subtitle="20 MINUTE PRACTICE")   # uses templates/editorial.svg
 render.batch_render("photos/", "thumbnails/", style)
 ```
 

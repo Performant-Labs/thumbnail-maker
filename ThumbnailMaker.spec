@@ -17,8 +17,8 @@ while len(_parts) < 4:
     _parts.append(0)
 VERSION_TUPLE = tuple(_parts[:4])
 
-# Bundle the fonts/ folder (the app crashes without the .ttf).
-datas = [("fonts", "fonts")]
+# Bundle the fonts/ and templates/ folders (the app needs both at runtime).
+datas = [("fonts", "fonts"), ("templates", "templates")]
 
 # --- Windows: build a version-info resource so the .exe has a real version ---
 win_version = None

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <!-- Photo: each input image is cover-cropped into this box. Edit x/width to
+       move the seam; the panel below covers the left side. -->
+  <rect id="photo" x="625" y="0" width="655" height="720"/>
+
+  <!-- Left color panel. Change fill to restyle; move width to resize. -->
+  <rect x="0" y="0" width="625" height="720" fill="#72204E"/>
+
+  <!-- Title: shrinks and wraps to fit. font-size is the maximum. -->
+  <text x="57" y="215"
+        font-family="Playfair Display" font-weight="400" font-size="170"
+        fill="#FFFFFF" text-anchor="start"
+        data-fit="true" data-max-width="511" data-max-lines="2" data-line-height="1.6"
+  >{{title}}</text>
+
+  <!-- Subtitle: small, letter-spaced. -->
+  <text x="60" y="640"
+        font-family="Playfair Display" font-weight="500" font-size="33"
+        fill="#FFFFFF" text-anchor="start" letter-spacing="6"
+  >{{subtitle}}</text>
+</svg>

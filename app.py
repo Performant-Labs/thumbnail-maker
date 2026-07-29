@@ -84,25 +84,31 @@ class BasePanel(ttk.Frame):
         self._schedule_preview()
 
     def _color_row(self, r):
-        """Panel-color picker: a dropdown of named colors from colors.json plus
-        a free-form hex field. Picking a dropdown entry fills the hex field;
-        typing in the field overrides it. Either way, the hex field's value
-        (if valid) becomes the panel's fill; empty/invalid keeps the
+        """Panel-color picker: a dropdown of named colors from colors.json —
+        each entry shown with an actual color swatch, not just its hex text —
+        plus a free-form hex field. Picking a dropdown entry fills the hex
+        field; typing in the field overrides it. Either way, the hex field's
+        value (if valid) becomes the panel's fill; empty/invalid keeps the
         template's own default fill.
         """
         ttk.Label(self, text="Panel color").grid(row=r, column=0, sticky="w", pady=2)
         row = ttk.Frame(self); row.grid(row=r, column=1, sticky="ew", pady=2)
 
         self._color_default_label = "(template default)"
-        self._color_label_to_hex = {self._color_default_label: ""}
-        for c in self._panel_colors:
-            self._color_label_to_hex[f"{c['name']}  {c['hex']}"] = c["hex"]
+        self._color_entries = [(self._color_default_label, "")]
+        self._color_entries += [(f"{c['name']}  {c['hex']}", c["hex"]) for c in self._panel_colors]
+        self._color_label_to_hex = dict(self._color_entries)
+        self._color_menu_images = []  # keep references so Tk doesn't GC them
 
-        self.color_combo = ttk.Combobox(row, values=list(self._color_label_to_hex),
-                                        state="readonly", width=20)
-        self.color_combo.grid(row=0, column=0, sticky="w")
-        self.color_combo.set(self._label_for_hex(self.color_hex_var.get()))
-        self.color_combo.bind("<<ComboboxSelected>>", self._on_color_selected)
+        self.color_menubutton = ttk.Menubutton(row, width=18)
+        self.color_menubutton.grid(row=0, column=0, sticky="w")
+        menu = tk.Menu(self.color_menubutton, tearoff=0)
+        for label, hex_value in self._color_entries:
+            img = self._swatch_image(hex_value)
+            self._color_menu_images.append(img)
+            menu.add_command(label=label, image=img, compound="left",
+                             command=lambda h=hex_value: self._on_color_picked(h))
+        self.color_menubutton.configure(menu=menu)
 
         self.color_swatch = tk.Label(row, width=2, relief="solid", borderwidth=1)
         self.color_swatch.grid(row=0, column=1, padx=(6, 6))
@@ -111,8 +117,15 @@ class BasePanel(ttk.Frame):
         hex_entry.grid(row=0, column=2, sticky="w")
         hex_entry.bind("<KeyRelease>", lambda ev: self._on_color_hex_edited())
 
-        self._update_color_swatch()
+        self._refresh_color_display()
         return r + 1
+
+    @staticmethod
+    def _swatch_image(hex_value: str, size: int = 14) -> tk.PhotoImage:
+        """A small solid-color square for a menu entry ("" = neutral/no override)."""
+        img = tk.PhotoImage(width=size, height=size)
+        img.put(hex_value or "#BBBBBB", to=(0, 0, size, size))
+        return img
 
     def _label_for_hex(self, hex_value: str) -> str:
         if not hex_value:
@@ -122,19 +135,20 @@ class BasePanel(ttk.Frame):
                 return label
         return f"Custom  {hex_value}"
 
-    def _on_color_selected(self, *_):
-        self.color_hex_var.set(self._color_label_to_hex.get(self.color_combo.get(), ""))
-        self._update_color_swatch()
+    def _on_color_picked(self, hex_value: str):
+        self.color_hex_var.set(hex_value)
+        self._refresh_color_display()
         self.app.save_settings()
         self._schedule_preview()
 
     def _on_color_hex_edited(self):
-        self._update_color_swatch()
+        self._refresh_color_display()
         self.app.save_settings()
         self._schedule_preview()
 
-    def _update_color_swatch(self):
+    def _refresh_color_display(self):
         hex_value = self.color_hex_var.get().strip()
+        self.color_menubutton.configure(text=self._label_for_hex(hex_value))
         color = hex_value if core.is_valid_hex_color(hex_value) else "#FFFFFF"
         try:
             self.color_swatch.configure(background=color)

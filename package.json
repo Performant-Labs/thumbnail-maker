@@ -1,0 +1,7 @@
+{
+  "name": "thumbnail-maker",
+  "private": true,
+  "scripts": {
+    "app:local:launch": "bash scripts/launch-local.sh"
+  }
+}

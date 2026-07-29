@@ -31,6 +31,18 @@ def test_render_layout_returns_image(sample_photo):
     assert img.size == (1280, 720)
 
 
+def test_render_thumbnail_applies_panel_color(sample_photo):
+    # editorial.svg's id="panel" rect fills x=0..625, y=0..720.
+    img = core.render_thumbnail(sample_photo, "FEET FIRST", _style(panel_color="#112233"))
+    assert img.getpixel((10, 10)) == (0x11, 0x22, 0x33)
+
+
+def test_render_thumbnail_invalid_panel_color_keeps_template_default(sample_photo):
+    default_img = core.render_thumbnail(sample_photo, "FEET FIRST", _style())
+    bad_img = core.render_thumbnail(sample_photo, "FEET FIRST", _style(panel_color="not-a-color"))
+    assert bad_img.getpixel((10, 10)) == default_img.getpixel((10, 10))
+
+
 def test_render_layout_defaults_fields():
     # fields=None path uses the style subtitle + a default title
     img = core.render_layout(_style())

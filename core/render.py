@@ -112,7 +112,8 @@ def render_thumbnail(photo_path: str, title_or_fields, style: Style):
     with open(style.template_path, encoding="utf-8") as f:
         svg = f.read()
     fields = _fields_for(photo_path, style, overrides)
-    return svgtemplate.render_template(svg, photo_path, fields, style.font_files)
+    return svgtemplate.render_template(svg, photo_path, fields, style.font_files,
+                                       panel_color=style.panel_color)
 
 
 def render_layout(style: Style, fields: dict[str, str] | None = None):
@@ -120,7 +121,7 @@ def render_layout(style: Style, fields: dict[str, str] | None = None):
     fields = fields or {"title": "Your Title Here", "subtitle": style.subtitle}
     with open(style.template_path, encoding="utf-8") as f:
         svg = f.read()
-    return svgtemplate.render_layout(svg, fields, style.font_files)
+    return svgtemplate.render_layout(svg, fields, style.font_files, panel_color=style.panel_color)
 
 
 def batch_render(input_folder: str, output_folder: str, style: Style,
@@ -142,7 +143,8 @@ def batch_render(input_folder: str, output_folder: str, style: Style,
         err = None
         try:
             fields = _fields_for(path, style, csv_overrides.get(name))
-            img = svgtemplate.render_template(svg, path, fields, style.font_files)
+            img = svgtemplate.render_template(svg, path, fields, style.font_files,
+                                              panel_color=style.panel_color)
             out_path = os.path.join(output_folder, f"{os.path.splitext(name)[0]}_thumb.jpg")
             img.save(out_path, "JPEG", quality=quality)
             written.append(out_path)

@@ -3,8 +3,9 @@
        move the seam; the panel below covers the left side. -->
   <rect id="photo" x="625" y="0" width="655" height="720"/>
 
-  <!-- Left color panel. Change fill to restyle; move width to resize. -->
-  <rect x="0" y="0" width="625" height="720" fill="#72204E"/>
+  <!-- Left color panel. id="panel" lets the app override fill at render time;
+       its fill here is just the default when no color is chosen. -->
+  <rect id="panel" x="0" y="0" width="625" height="720" fill="#72204E"/>
 
   <!-- Title: shrinks and wraps to fit. font-size is the maximum. -->
   <text x="57" y="215"

@@ -49,8 +49,11 @@ is internal and may change.
 
 - **`Style`** (dataclass) — batch-wide render settings. Fields:
   `template_path: str`, `subtitle: str`, `uppercase: bool = True`,
-  `font_files: list[str]`. Defaults point at the bundled editorial template and
-  the bundled Playfair Display font.
+  `font_files: list[str]`, `panel_color: str | None = None`. Defaults point at
+  the bundled editorial template and the bundled Playfair Display font.
+  `panel_color` (a `#RGB`/`#RRGGBB` hex string) overrides the fill of a
+  template's `id="panel"` element, if it has one; `None`/invalid leaves the
+  template's own fill in place.
 - **`ProgressCallback`** — type alias for `Callable[[int, int, str, str | None], None]`,
   the batch progress signature `(done, total, name, error)`. `error` is `None` on
   success, else a message string; the batch keeps going past a failed file.
@@ -80,6 +83,13 @@ is internal and may change.
   per-photo overrides CSV keyed by `filename`.
 - **`placeholder_fields(subtitle, uppercase) -> dict[str, str]`** — the field
   dict used to render a layout preview before a real title exists.
+- **`load_panel_colors(path=PANEL_COLORS_PATH) -> list[dict[str, str]]`** — the
+  named panel-color choices from `templates/colors.json`
+  (`[{"name": ..., "hex": ...}, ...]`); an empty list if the file is
+  missing/malformed.
+- **`is_valid_hex_color(value) -> bool`** — `True` for `#RGB`/`#RRGGBB`
+  (case-insensitive), used to validate a custom hex before passing it as
+  `Style.panel_color`.
 
 ### Template library / classification
 
@@ -100,6 +110,7 @@ is internal and may change.
 - **`FONT_PATH`** — path to the bundled `fonts/PlayfairDisplay-VF.ttf`.
 - **`IMAGE_EXTS`** — the set of recognized image extensions.
 - **`DEFAULT_SUBTITLE`** — the default subtitle string.
+- **`PANEL_COLORS_PATH`** — path to the bundled `templates/colors.json`.
 
 ### Config / settings persistence
 
@@ -138,6 +149,10 @@ A template is an ordinary SVG. See `core/svgtemplate.py` and
 3. **Auto-fit text** — a `<text>` with `data-fit="true"` (+ `data-max-width`,
    `data-max-lines`, optional `data-line-height`) shrinks and wraps: its
    `font-size` is treated as the maximum.
+4. **Panel color (optional)** — at most one element with `id="panel"` has its
+   `fill` overridden by `Style.panel_color` at render time. A template with no
+   such element is unaffected; this lets a template opt in to a user-selectable
+   background without every template needing one.
 
 ## Writing an alternate frontend
 

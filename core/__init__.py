@@ -18,7 +18,9 @@ from .resources import (
     DEFAULT_TEMPLATE,
     FONT_PATH,
     IMAGE_EXTS,
+    PANEL_COLORS_PATH,
     TEMPLATES_DIR,
+    load_panel_colors,
 )
 from .render import (
     batch_render,
@@ -29,6 +31,7 @@ from .render import (
     render_thumbnail,
     title_from_filename,
 )
+from .svgtemplate import is_valid_hex_color
 from .templates_lib import TemplateLibrary, builtin_template_paths
 from .types import ProgressCallback, Style
 
@@ -42,6 +45,7 @@ __all__ = [
     "FONT_PATH",
     "DEFAULT_SUBTITLE",
     "IMAGE_EXTS",
+    "PANEL_COLORS_PATH",
     # rendering
     "render_thumbnail",
     "render_layout",
@@ -51,6 +55,9 @@ __all__ = [
     "list_images",
     "load_titles_csv",
     "placeholder_fields",
+    # panel color
+    "load_panel_colors",
+    "is_valid_hex_color",
     # template library / classification
     "TemplateLibrary",
     "builtin_template_paths",

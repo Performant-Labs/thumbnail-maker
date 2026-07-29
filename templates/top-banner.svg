@@ -2,8 +2,9 @@
   <!-- Photo: fills the frame below the banner. Cover-cropped into this box. -->
   <rect id="photo" x="0" y="232" width="1280" height="488"/>
 
-  <!-- Top banner band. Change fill/height to restyle. -->
-  <rect x="0" y="0" width="1280" height="232" fill="#8C3A2B"/>
+  <!-- Top banner band. id="panel" lets the app override fill at render time;
+       its fill here is just the default when no color is chosen. -->
+  <rect id="panel" x="0" y="0" width="1280" height="232" fill="#8C3A2B"/>
   <!-- Thin accent line along the bottom edge of the banner. -->
   <rect x="0" y="226" width="1280" height="6" fill="#F0C9A0"/>
 

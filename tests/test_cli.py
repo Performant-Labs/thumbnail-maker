@@ -49,3 +49,22 @@ def test_cli_unknown_template_errors(sample_photo, tmp_path):
 
     with pytest.raises(SystemExit):
         cli.main(["single", sample_photo, "--template", "nope", "--out", str(tmp_path)])
+
+
+def test_cli_single_with_color_applies_panel_color(sample_photo, tmp_path):
+    from PIL import Image
+
+    rc = cli.main(["single", sample_photo, "--template", "editorial",
+                   "--title", "FEET FIRST", "--color", "#112233", "--out", str(tmp_path)])
+    assert rc == 0
+    img = Image.open(tmp_path / "feet-first_thumb.jpg")
+    pixel = img.getpixel((10, 10))
+    # JPEG is lossy, so allow a little slack rather than requiring an exact match.
+    assert all(abs(a - b) <= 8 for a, b in zip(pixel, (0x11, 0x22, 0x33)))
+
+
+def test_cli_invalid_color_errors(sample_photo, tmp_path):
+    import pytest
+
+    with pytest.raises(SystemExit):
+        cli.main(["single", sample_photo, "--color", "not-a-color", "--out", str(tmp_path)])

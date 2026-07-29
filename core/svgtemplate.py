@@ -35,6 +35,7 @@ SVG_NS = "http://www.w3.org/2000/svg"
 ET.register_namespace("", SVG_NS)
 
 _TOKEN_RE = re.compile(r"\{\{\s*([\w-]+)\s*\}\}")
+_HEX_COLOR_RE = re.compile(r"^#(?:[0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$")
 
 _MIME = {
     ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png",
@@ -68,15 +69,36 @@ def _data_uri(photo_path: str) -> str:
     return f"data:{mime};base64,{b64}"
 
 
+def is_valid_hex_color(value: str) -> bool:
+    """``#RGB`` or ``#RRGGBB``, case-insensitive."""
+    return bool(_HEX_COLOR_RE.match(value or ""))
+
+
 def _build_parent_map(root):
     return {child: parent for parent in root.iter() for child in parent}
 
 
-def _find_photo(root):
+def _find_by_id(root, element_id: str):
     for el in root.iter():
-        if el.get("id") == "photo":
+        if el.get("id") == element_id:
             return el
     return None
+
+
+def _find_photo(root):
+    return _find_by_id(root, "photo")
+
+
+def _inject_panel_color(root, panel_color: str | None):
+    """Override the fill of the ``id="panel"`` element, if the template has one
+    and a valid color was supplied. Templates without a panel element, or a
+    missing/invalid color, are a no-op — the template's own fill stands.
+    """
+    if not panel_color or not is_valid_hex_color(panel_color):
+        return
+    target = _find_by_id(root, "panel")
+    if target is not None:
+        target.set("fill", panel_color)
 
 
 def _replace(root, target, new_el):
@@ -247,12 +269,13 @@ def _canvas_size(root) -> tuple[int, int]:
 
 
 def render_template(svg_text: str, photo_path: str, fields: dict[str, str],
-                    font_files: list[str]) -> Image.Image:
+                    font_files: list[str], panel_color: str | None = None) -> Image.Image:
     """Fill a template SVG with a photo + fields and render to a PIL Image."""
     filled = substitute_tokens(svg_text, fields)
     root = ET.fromstring(filled)
 
     _inject_photo(root, photo_path)
+    _inject_panel_color(root, panel_color)
     font_for_measure = font_files[0] if font_files else None
     if font_for_measure:
         _fit_text_elements(root, font_for_measure)
@@ -271,7 +294,7 @@ def render_template(svg_text: str, photo_path: str, fields: dict[str, str],
 
 
 def render_layout(svg_text: str, fields: dict[str, str],
-                  font_files: list[str]) -> Image.Image:
+                  font_files: list[str], panel_color: str | None = None) -> Image.Image:
     """Render a template's *layout* — placeholder title/subtitle plus a labeled
     'PHOTO' box — so you can see where everything lands before picking a photo.
     """
@@ -279,6 +302,7 @@ def render_layout(svg_text: str, fields: dict[str, str],
     root = ET.fromstring(filled)
 
     _inject_photo_placeholder(root)
+    _inject_panel_color(root, panel_color)
     if font_files:
         _fit_text_elements(root, font_files[0])
 

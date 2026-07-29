@@ -26,3 +26,4 @@ class Style:
     subtitle: str = DEFAULT_SUBTITLE
     uppercase: bool = True
     font_files: list[str] = field(default_factory=lambda: [FONT_PATH])
+    panel_color: str | None = None

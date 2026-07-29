@@ -7,10 +7,10 @@ tkinter.
 Usage:
     python cli.py single <image> [--template NAME] [--title "..."]
                                  [--subtitle "..."] [--no-uppercase]
-                                 [--out DIR] [--quality N]
+                                 [--color "#RRGGBB"] [--out DIR] [--quality N]
     python cli.py batch <input_dir> <output_dir> [--template NAME]
                                  [--subtitle "..."] [--no-uppercase]
-                                 [--csv FILE] [--quality N]
+                                 [--color "#RRGGBB"] [--csv FILE] [--quality N]
     python cli.py templates          # list available built-in template names
 
 ``--template`` takes a built-in template *name* (e.g. ``editorial``,
@@ -41,11 +41,20 @@ def _resolve_template(name: str | None) -> str:
     raise SystemExit(f"Unknown template {name!r}. Available: {available} (or pass an .svg path).")
 
 
+def _panel_color(value: str | None) -> str | None:
+    if value is None:
+        return None
+    if not core.is_valid_hex_color(value):
+        raise SystemExit(f"Invalid --color {value!r}: expected #RGB or #RRGGBB.")
+    return value
+
+
 def _style(args) -> core.Style:
     return core.Style(
         template_path=_resolve_template(args.template),
         subtitle=args.subtitle,
         uppercase=not args.no_uppercase,
+        panel_color=_panel_color(args.color),
     )
 
 
@@ -100,6 +109,8 @@ def build_parser() -> argparse.ArgumentParser:
         sp.add_argument("--subtitle", default=core.DEFAULT_SUBTITLE, help="Subtitle text")
         sp.add_argument("--no-uppercase", action="store_true", help="Do not uppercase title/subtitle")
         sp.add_argument("--quality", type=int, default=90, help="JPEG quality (default 90)")
+        sp.add_argument("--color", help="Panel background color as #RGB or #RRGGBB "
+                                        "(overrides the template's default fill)")
 
     sp_single = sub.add_parser("single", help="Render one thumbnail from one image")
     sp_single.add_argument("image", help="Path to the source photo")

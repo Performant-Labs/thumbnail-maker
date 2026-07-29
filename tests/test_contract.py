@@ -82,6 +82,46 @@ def test_data_fit_short_title_keeps_max_size():
     assert int(float(text_el.get("font-size"))) == 120
 
 
+def test_is_valid_hex_color():
+    assert svgtemplate.is_valid_hex_color("#72204E")
+    assert svgtemplate.is_valid_hex_color("#abc")
+    assert not svgtemplate.is_valid_hex_color("72204E")   # missing '#'
+    assert not svgtemplate.is_valid_hex_color("#72204")   # wrong length
+    assert not svgtemplate.is_valid_hex_color("#zzzzzz")  # not hex digits
+    assert not svgtemplate.is_valid_hex_color("")
+    assert not svgtemplate.is_valid_hex_color(None)
+
+
+def test_inject_panel_color_overrides_fill():
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg">'
+        '<rect id="panel" x="0" y="0" width="625" height="720" fill="#72204E"/></svg>'
+    )
+    root = ET.fromstring(svg)
+    svgtemplate._inject_panel_color(root, "#123456")
+    panel = [el for el in root.iter() if el.get("id") == "panel"][0]
+    assert panel.get("fill") == "#123456"
+
+
+def test_inject_panel_color_noop_without_panel_element():
+    svg = '<svg xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="10" height="10"/></svg>'
+    root = ET.fromstring(svg)
+    svgtemplate._inject_panel_color(root, "#123456")  # must not raise
+    assert "#123456" not in ET.tostring(root, encoding="unicode")
+
+
+def test_inject_panel_color_noop_on_invalid_or_missing_color():
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg">'
+        '<rect id="panel" fill="#72204E"/></svg>'
+    )
+    for bad in (None, "", "not-a-color"):
+        root = ET.fromstring(svg)
+        svgtemplate._inject_panel_color(root, bad)
+        panel = [el for el in root.iter() if el.get("id") == "panel"][0]
+        assert panel.get("fill") == "#72204E"
+
+
 def test_all_five_builtin_templates_render(sample_photo):
     """Every shipped template renders both a short and a long title to 1280x720."""
     for path in core.builtin_template_paths():

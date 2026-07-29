@@ -45,10 +45,12 @@ class BasePanel(ttk.Frame):
         self.subtitle_var = tk.StringVar(value=cfg.get("subtitle", core.DEFAULT_SUBTITLE))
         self.template_var = tk.StringVar(value=app.label_for_path(cfg.get("template_path")))
         self.upper_var = tk.BooleanVar(value=cfg.get("uppercase", True))
+        self.color_hex_var = tk.StringVar(value=cfg.get("panel_color", "") or "")
         self.status_var = tk.StringVar(value="")
         self._preview_imgtk = None
         self._preview_job = None
         self.template_combo: ttk.Combobox | None = None
+        self._panel_colors = core.load_panel_colors()
 
     # ---- shared row builders (return next grid row) ----
     def _template_row(self, r):
@@ -80,6 +82,68 @@ class BasePanel(ttk.Frame):
         self._template_prev = val
         self.app.save_settings()
         self._schedule_preview()
+
+    def _color_row(self, r):
+        """Panel-color picker: a dropdown of named colors from colors.json plus
+        a free-form hex field. Picking a dropdown entry fills the hex field;
+        typing in the field overrides it. Either way, the hex field's value
+        (if valid) becomes the panel's fill; empty/invalid keeps the
+        template's own default fill.
+        """
+        ttk.Label(self, text="Panel color").grid(row=r, column=0, sticky="w", pady=2)
+        row = ttk.Frame(self); row.grid(row=r, column=1, sticky="ew", pady=2)
+
+        self._color_default_label = "(template default)"
+        self._color_label_to_hex = {self._color_default_label: ""}
+        for c in self._panel_colors:
+            self._color_label_to_hex[f"{c['name']}  {c['hex']}"] = c["hex"]
+
+        self.color_combo = ttk.Combobox(row, values=list(self._color_label_to_hex),
+                                        state="readonly", width=20)
+        self.color_combo.grid(row=0, column=0, sticky="w")
+        self.color_combo.set(self._label_for_hex(self.color_hex_var.get()))
+        self.color_combo.bind("<<ComboboxSelected>>", self._on_color_selected)
+
+        self.color_swatch = tk.Label(row, width=2, relief="solid", borderwidth=1)
+        self.color_swatch.grid(row=0, column=1, padx=(6, 6))
+
+        hex_entry = ttk.Entry(row, textvariable=self.color_hex_var, width=10)
+        hex_entry.grid(row=0, column=2, sticky="w")
+        hex_entry.bind("<KeyRelease>", lambda ev: self._on_color_hex_edited())
+
+        self._update_color_swatch()
+        return r + 1
+
+    def _label_for_hex(self, hex_value: str) -> str:
+        if not hex_value:
+            return self._color_default_label
+        for label, hx in self._color_label_to_hex.items():
+            if hx.lower() == hex_value.lower():
+                return label
+        return f"Custom  {hex_value}"
+
+    def _on_color_selected(self, *_):
+        self.color_hex_var.set(self._color_label_to_hex.get(self.color_combo.get(), ""))
+        self._update_color_swatch()
+        self.app.save_settings()
+        self._schedule_preview()
+
+    def _on_color_hex_edited(self):
+        self._update_color_swatch()
+        self.app.save_settings()
+        self._schedule_preview()
+
+    def _update_color_swatch(self):
+        hex_value = self.color_hex_var.get().strip()
+        color = hex_value if core.is_valid_hex_color(hex_value) else "#FFFFFF"
+        try:
+            self.color_swatch.configure(background=color)
+        except tk.TclError:
+            pass
+
+    def _panel_color(self) -> str | None:
+        hex_value = self.color_hex_var.get().strip()
+        return hex_value if core.is_valid_hex_color(hex_value) else None
 
     def _subtitle_row(self, r):
         ttk.Label(self, text="Subtitle").grid(row=r, column=0, sticky="w", pady=2)
@@ -141,7 +205,8 @@ class BasePanel(ttk.Frame):
     def _current_style(self) -> core.Style:
         return core.Style(template_path=self._template_path(),
                             subtitle=self.subtitle_var.get(),
-                            uppercase=self.upper_var.get())
+                            uppercase=self.upper_var.get(),
+                            panel_color=self._panel_color())
 
     # ---- preview ----
     def _schedule_preview(self, *_):
@@ -183,6 +248,7 @@ class BasePanel(ttk.Frame):
             "subtitle": self.subtitle_var.get(),
             "uppercase": bool(self.upper_var.get()),
             "template_path": self._template_path(),
+            "panel_color": self.color_hex_var.get().strip(),
         }
 
 
@@ -205,6 +271,7 @@ class SinglePanel(BasePanel):
         te.bind("<KeyRelease>", lambda e: self._schedule_preview()); r += 1
         r = self._subtitle_row(r)
         r = self._template_row(r)
+        r = self._color_row(r)
         r = self._uppercase_row(r)
         r = self._folder_row(r, "Output folder", self.out_var, self._pick_out)
         self.make_btn = ttk.Button(self, text="Create thumbnail", command=self._create)
@@ -297,6 +364,7 @@ class BatchPanel(BasePanel):
         r = self._folder_row(r, "Output folder", self.out_var, self._pick_out)
         r = self._subtitle_row(r)
         r = self._template_row(r)
+        r = self._color_row(r)
         r = self._csv_row(r)
         r = self._uppercase_row(r)
 

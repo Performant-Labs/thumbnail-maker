@@ -1,0 +1,14 @@
+[
+  { "name": "Plum",      "hex": "#72204E" },
+  { "name": "Navy",      "hex": "#17263B" },
+  { "name": "Charcoal",  "hex": "#14181F" },
+  { "name": "Rust",      "hex": "#8C3A2B" },
+  { "name": "Amber",     "hex": "#E8B84B" },
+  { "name": "Gold",      "hex": "#F2C94C" },
+  { "name": "Forest",    "hex": "#1F4B3F" },
+  { "name": "Teal",      "hex": "#117A65" },
+  { "name": "Slate",     "hex": "#3B4A5A" },
+  { "name": "Maroon",    "hex": "#5C1A1A" },
+  { "name": "Indigo",    "hex": "#2E2A72" },
+  { "name": "Black",     "hex": "#000000" }
+]

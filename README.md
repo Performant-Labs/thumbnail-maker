@@ -24,6 +24,9 @@ Both share these ideas:
   **Built-in** (the templates shipped in `templates/`) and **Custom** (ones you
   browse to), so it's always clear which is which. Both tabs use the same picker.
 - **Auto-fit titles** that shrink and wrap to fit the panel.
+- **Panel color** — pick a background color for the template's color panel from
+  a dropdown (`templates/colors.json`), or type any custom `#RRGGBB` hex into
+  the field next to it. Templates without a color panel ignore this.
 - **Live preview** before you render.
 - **Remembers your settings per tab** between launches.
 
@@ -140,7 +143,7 @@ core.batch_render("photos/", "thumbnails/", style)
 Or drive it straight from the terminal with the bundled CLI:
 
 ```bash
-python cli.py single photo.jpg --template editorial --title "FEET FIRST"
+python cli.py single photo.jpg --template editorial --title "FEET FIRST" --color "#17263B"
 python cli.py batch photos/ thumbnails/ --csv titles.csv
 python cli.py templates          # list the built-in template names
 ```

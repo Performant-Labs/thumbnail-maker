@@ -37,6 +37,9 @@ class BasePanel(ttk.Frame):
     implement `_preview_source()` and `settings_dict()`.
     """
 
+    _HEX_PLACEHOLDER = "#FFFFFF"
+    _HEX_PLACEHOLDER_FG = "#999999"
+
     def __init__(self, master, app: "App", cfg: dict):
         super().__init__(master, padding=14)
         self.app = app
@@ -113,12 +116,55 @@ class BasePanel(ttk.Frame):
         self.color_swatch = tk.Label(row, width=2, relief="solid", borderwidth=1)
         self.color_swatch.grid(row=0, column=1, padx=(6, 6))
 
-        hex_entry = ttk.Entry(row, textvariable=self.color_hex_var, width=10)
-        hex_entry.grid(row=0, column=2, sticky="w")
-        hex_entry.bind("<KeyRelease>", lambda ev: self._on_color_hex_edited())
+        # Not bound via textvariable: the placeholder text ("#FFFFFF" in grey)
+        # is a display-only affordance and must never become the real
+        # color_hex_var value (that would silently apply white as the panel
+        # color). Content is synced to/from color_hex_var explicitly instead.
+        self.hex_entry = ttk.Entry(row, width=10)
+        self.hex_entry.grid(row=0, column=2, sticky="w")
+        self._hex_fg_normal = self.hex_entry.cget("foreground") or "black"
+        self._hex_showing_placeholder = False
+        self.hex_entry.bind("<FocusIn>", self._on_hex_focus_in)
+        self.hex_entry.bind("<FocusOut>", self._on_hex_focus_out)
+        self.hex_entry.bind("<KeyRelease>", lambda ev: self._on_color_hex_edited())
 
+        self._sync_hex_entry_display()
         self._refresh_color_display()
         return r + 1
+
+    def _sync_hex_entry_display(self):
+        """Push color_hex_var's current value into the entry widget, or show
+        the grey placeholder if it's empty and the field isn't focused."""
+        value = self.color_hex_var.get().strip()
+        if value:
+            self._hex_showing_placeholder = False
+            self.hex_entry.configure(foreground=self._hex_fg_normal)
+            self.hex_entry.delete(0, tk.END)
+            self.hex_entry.insert(0, value)
+        elif self.focus_get() is self.hex_entry:
+            self._hex_showing_placeholder = False
+            self.hex_entry.configure(foreground=self._hex_fg_normal)
+            self.hex_entry.delete(0, tk.END)
+        else:
+            self._hex_showing_placeholder = True
+            self.hex_entry.configure(foreground=self._HEX_PLACEHOLDER_FG)
+            self.hex_entry.delete(0, tk.END)
+            self.hex_entry.insert(0, self._HEX_PLACEHOLDER)
+
+    def _on_hex_focus_in(self, _event):
+        if self._hex_showing_placeholder:
+            self._hex_showing_placeholder = False
+            self.hex_entry.configure(foreground=self._hex_fg_normal)
+            self.hex_entry.delete(0, tk.END)
+        # Select all so the next keypress replaces the field outright.
+        self.hex_entry.selection_range(0, tk.END)
+        self.hex_entry.icursor(tk.END)
+
+    def _on_hex_focus_out(self, _event):
+        self.color_hex_var.set(self.hex_entry.get().strip())
+        self._refresh_color_display()
+        self.app.save_settings()   # persists panel_color into settings.json
+        self._sync_hex_entry_display()
 
     @staticmethod
     def _swatch_image(hex_value: str, size: int = 14) -> tk.PhotoImage:
@@ -137,11 +183,13 @@ class BasePanel(ttk.Frame):
 
     def _on_color_picked(self, hex_value: str):
         self.color_hex_var.set(hex_value)
+        self._sync_hex_entry_display()
         self._refresh_color_display()
         self.app.save_settings()
         self._schedule_preview()
 
     def _on_color_hex_edited(self):
+        self.color_hex_var.set(self.hex_entry.get().strip())
         self._refresh_color_display()
         self.app.save_settings()
         self._schedule_preview()
